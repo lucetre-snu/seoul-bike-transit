@@ -1,6 +1,5 @@
 import time
 from bs4 import BeautifulSoup
-import datetime
 import sys
 
 from selenium import webdriver
@@ -9,42 +8,50 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
+
 class KakaoRouteFinder:
     def __init__(self, colab=False):
         if colab:
-            sys.path.insert(0,'/usr/lib/chromium-browser/chromedriver')
+            sys.path.insert(0, '/usr/lib/chromium-browser/chromedriver')
             chrome_options = webdriver.ChromeOptions()
             chrome_options.add_argument('--headless')
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
-            self.driver = webdriver.Chrome('chromedriver', chrome_options=chrome_options)
+            self.driver = webdriver.Chrome(
+                'chromedriver', chrome_options=chrome_options)
         else:
-            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+            self.driver = webdriver.Chrome(
+                service=Service(ChromeDriverManager().install()))
 
     def fetch_bike(self, verbose=True, init=True, time_delta=0.2):
         if init:
-            self.driver.find_element(by=By.CSS_SELECTOR, value=f"#biketab").click()
+            self.driver.find_element(
+                by=By.CSS_SELECTOR, value=f"#biketab").click()
             time.sleep(2)
-            
+
         if verbose:
             for li in self.driver.find_elements(by=By.CSS_SELECTOR, value=f"div.BikeRouteResultView > ul > li"):
-                li.click()        
+                li.click()
                 time.sleep(time_delta)
-                
-        element = self.driver.find_element(by=By.CSS_SELECTOR, value=f"div.BikeRouteResultView")
+
+        element = self.driver.find_element(
+            by=By.CSS_SELECTOR, value=f"div.BikeRouteResultView")
         return element.get_attribute('innerHTML')
-    
+
     def fetch_walk(self, verbose=False, init=True, time_delta=0.2):
         if init:
-            self.driver.find_element(by=By.CSS_SELECTOR, value=f"#walktab").click()
+            self.driver.find_element(
+                by=By.CSS_SELECTOR, value=f"#walktab").click()
             time.sleep(time_delta)
 
-        element = self.driver.find_element(by=By.CSS_SELECTOR, value=f"div.WalkRouteResultView")
+        element = self.driver.find_element(
+            by=By.CSS_SELECTOR, value=f"div.WalkRouteResultView")
         return element.get_attribute('innerHTML')
-        
-    def fetch_transit(self, verbose=True, init=True, time_delta=0.2, init_time=2.0):    
+
+    def fetch_transit(self, verbose=True, init=True, time_delta=0.2, init_time=2.0):
         if init:
-            self.driver.find_element(by=By.CSS_SELECTOR, value=f"#transittab").click()
+            self.driver.find_element(
+                by=By.CSS_SELECTOR, value=f"#transittab").click()
             time.sleep(init_time)
 
         if verbose:
@@ -55,15 +62,17 @@ class KakaoRouteFinder:
                     time.sleep(time_delta)
                 time.sleep(time_delta)
 
-        element = self.driver.find_element(by=By.CSS_SELECTOR, value=f"ul.TransitTotalPanel")
+        element = self.driver.find_element(
+            by=By.CSS_SELECTOR, value=f"ul.TransitTotalPanel")
         return element.get_attribute('innerHTML')
 
     def find_route_by_url(self, type, base_url, verbose=True, init=True, time_delta=0.2, init_time=2.0):
         self.driver.get(base_url)
         time.sleep(time_delta)
-        
+
         try:
-            self.driver.find_element(by=By.CSS_SELECTOR, value="#dimmedLayer").click()
+            self.driver.find_element(
+                by=By.CSS_SELECTOR, value="#dimmedLayer").click()
         except ElementNotInteractableException:
             pass
 
@@ -80,17 +89,15 @@ class KakaoRouteFinder:
             # print('find_route_by_url', e)
             pass
 
-
     def find_route_by_congnamul(self, type, origin, dest, rt1='ORIGIN', rt2='DESTINATION', verbose=False, init=False, time_delta=0.2, init_time=2.0):
         (org_x, org_y) = origin
         (des_x, des_y) = dest
         base_url = f"https://map.kakao.com/?map_type=TYPE_MAP&target={type}&rt={int(org_x)},{int(org_y)},{int(des_x)},{int(des_y)}&rt1={rt1}&rt2={rt2}"
         return self.find_route_by_url(type, base_url, verbose, init, time_delta, init_time)
-        
 
     def find_route_by_keyword(self, type, origin, dest, time_delta=0.2, init_time=2.0):
         base_url = f"https://map.kakao.com/?map_type=TYPE_MAP&target={type}&sName={origin}&eName={dest}"
-        return self.find_route_by_url(type, base_url, verbose=True, init=(type=='transit'), time_delta=time_delta, init_time=init_time)
+        return self.find_route_by_url(type, base_url, verbose=True, init=(type == 'transit'), time_delta=time_delta, init_time=init_time)
 
     def __del__(self):
         self.driver.close()
@@ -119,18 +126,6 @@ def extract_route(type, route):
             res.append({
                 "mode": route.find('span', {"class": "mode"}).text,
                 "time": route.find('span', {"class": "time"}).text.strip(),
-                "info": route.find('div', {"class": "info"}).text.strip(),
+                "info": route.find('div', {"class": "info"}).text.strip() + " | " + route.find('span', {"class": "distance"}).text.strip(),
             })
     return res
-
-
-def calc_timedelta(str_time):
-    delta = datetime.timedelta()
-    for t in str_time.strip().split():
-        if t.find('시간') != -1:
-            delta += datetime.timedelta(hours=int(t.replace("시간", "")))
-        elif t.find('분') != -1:
-            delta += datetime.timedelta(minutes=int(t.replace("분", "")))
-        elif t.find('초') != -1:
-            delta += datetime.timedelta(seconds=int(t.replace("초", "")))
-    return delta
