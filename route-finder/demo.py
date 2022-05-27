@@ -4,7 +4,6 @@ import datetime
 import coordinate
 import pandas as pd
 import numpy as np
-from IPython.display import HTML
 
 
 def calc_timedelta(str_time):
@@ -26,6 +25,25 @@ def calc_distdelta(str_dist):
             delta += float(d.replace("km", "")) * 1000
         elif d.find('m') != -1:
             delta += float(d.replace("m", ""))
+    return delta
+
+
+def calc_faredelta(str_fare):
+    delta = 0
+    for f in str_fare.strip().split():
+        if f.find('원') != -1:
+            delta += int(f.replace("원", "").replace(",", ""))
+    return delta
+
+
+def calc_trandelta(str_tran):
+    if calc_faredelta(str_tran) == 0:
+        delta = 0
+    else:
+        delta = 1
+    for t in str_tran.strip().split():
+        if t.find('회') != -1:
+            delta += int(t.replace("회", "").replace("환승", ""))
     return delta
 
 
@@ -69,6 +87,22 @@ def get_dist(srt_routes, end_routes, bike_routes):
     return (total_dist/1000, srt_dist/1000, end_dist/1000, bike_dist/1000)
 
 
+def get_tran(srt_routes, end_routes, bike_routes):
+    srt_tran = min([calc_trandelta(route['info']) for route in srt_routes])
+    end_tran = min([calc_trandelta(route['info']) for route in end_routes])
+    bike_tran = 0
+    total_tran = srt_tran + bike_tran + end_tran
+    return (total_tran, srt_tran, end_tran, bike_tran)
+
+
+def get_fare(srt_routes, end_routes, bike_routes):
+    srt_fare = min([calc_faredelta(route['info']) for route in srt_routes])
+    end_fare = min([calc_faredelta(route['info']) for route in end_routes])
+    bike_fare = 1000
+    total_fare = max(srt_fare, bike_fare, end_fare)
+    return (total_fare, srt_fare, end_fare, bike_fare)
+
+
 def read_routes(org, des):
     filename = f'routes/{org}-{des}.pkl'
 
@@ -103,8 +137,12 @@ def read_routes(org, des):
                     org_routes[i], des_routes[j], bike_routes[route_id])
                 (total_dist, srt_dist, end_dist, bike_dist) = get_dist(
                     org_routes[i], des_routes[j], bike_routes[route_id])
+                (total_tran, srt_tran, end_tran, bike_tran) = get_tran(
+                    org_routes[i], des_routes[j], bike_routes[route_id])
+                (total_fare, srt_fare, end_fare, bike_fare) = get_fare(
+                    org_routes[i], des_routes[j], bike_routes[route_id])
 
-                # print((total_dist, srt_dist, end_dist, bike_dist))
+                # print((total_tran, srt_tran, end_tran, bike_tran))
 
                 srt_link = f'https://map.kakao.com/?map_type=TYPE_MAP&target=transit&rt={org_x},{org_y},{srt_coord[0]},{srt_coord[1]}&rt1={org}&rt2={srt_name}'
                 end_link = f'https://map.kakao.com/?map_type=TYPE_MAP&target=transit&rt={end_coord[0]},{end_coord[1]},{des_x},{des_y}&rt1={end_name}&rt2={des}'
@@ -114,22 +152,22 @@ def read_routes(org, des):
                 rows.append([
                     route_id,
                     f'<a href="{srt_link}">{org}</a>',
-                    str(srt_time), srt_calo, srt_dist,
+                    str(srt_time), srt_calo, srt_dist, srt_fare, srt_tran,
                     f'<a href="{bike_link}">{srt_name}</a>',
                     str(bike_time), bike_calo, bike_dist,
                     f'<a href="{end_link}">{end_name}</a>',
-                    str(end_time), end_calo, end_dist,
+                    str(end_time), end_calo, end_dist, end_fare, end_tran,
                     f'<a href="{total_link}">{des}</a>',
-                    str(total_time), total_calo, total_dist,
+                    str(total_time), total_calo, total_dist, total_fare, total_tran,
                 ])
             except Exception as e:
                 print(e)
                 pass
 
     df = pd.DataFrame(
-        rows, columns="route_id org srt_time srt_calo srt_dist srt_name bike_time bike_calo bike_dist end_name end_time end_calo end_dist des total_time total_calo total_dist".split())
+        rows, columns="route_id org srt_time srt_calo srt_dist srt_fare srt_tran srt_name bike_time bike_calo bike_dist end_name end_time end_calo end_dist end_fare end_tran des total_time total_calo total_dist total_fare total_tran".split())
     df.set_index("route_id", inplace=True)
-    return HTML(df.sort_values(by="total_time").to_html(escape=False))
+    return df.sort_values(by="total_time")
 
 
 if __name__ == "__main__":
