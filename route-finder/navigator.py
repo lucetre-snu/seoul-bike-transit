@@ -1,6 +1,7 @@
 import time
 from bs4 import BeautifulSoup
 import datetime
+import sys
 
 from selenium import webdriver
 from selenium.common.exceptions import ElementNotInteractableException
@@ -9,8 +10,16 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
 class KakaoRouteFinder:
-    def __init__(self):
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    def __init__(self, colab=False):
+        if colab:
+            sys.path.insert(0,'/usr/lib/chromium-browser/chromedriver')
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            self.driver = webdriver.Chrome('chromedriver', chrome_options=chrome_options)
+        else:
+            self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 
     def fetch_bike(self, verbose=True, init=True, time_delta=0.2):
         if init:

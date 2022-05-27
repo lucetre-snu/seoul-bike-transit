@@ -1,11 +1,22 @@
-import pickle
+import pickle5 as pickle
 
+import datetime
 from cv2 import mean
-import navigator
 import coordinate
 import pandas as pd
 import numpy as np
 from IPython.display import HTML
+
+def calc_timedelta(str_time):
+    delta = datetime.timedelta()
+    for t in str_time.strip().split():
+        if t.find('시간') != -1:
+            delta += datetime.timedelta(hours=int(t.replace("시간", "")))
+        elif t.find('분') != -1:
+            delta += datetime.timedelta(minutes=int(t.replace("분", "")))
+        elif t.find('초') != -1:
+            delta += datetime.timedelta(seconds=int(t.replace("초", "")))
+    return delta
 
 def read_routes(org, des):
     filename = f'routes/{org}-{des}.pkl'
@@ -36,9 +47,9 @@ def read_routes(org, des):
                 except: end_calories = 0
                 total_calories = srt_calories + bike_calories + end_calories
 
-                srt_time = navigator.calc_timedelta(min([route['time'] for route in org_routes[i]]))
-                end_time = navigator.calc_timedelta(min([route['time'] for route in des_routes[j]]))
-                bike_time = navigator.calc_timedelta(min([route['time'] for route in bike_routes[route_id]]))
+                srt_time = calc_timedelta(min([route['time'] for route in org_routes[i]]))
+                end_time = calc_timedelta(min([route['time'] for route in des_routes[j]]))
+                bike_time = calc_timedelta(min([route['time'] for route in bike_routes[route_id]]))
                 total_time = srt_time + bike_time + end_time
 
                 srt_link = f'https://map.kakao.com/?map_type=TYPE_MAP&target=transit&rt={org_x},{org_y},{srt_coord[0]},{srt_coord[1]}&rt1={org}&rt2={srt_name}'
