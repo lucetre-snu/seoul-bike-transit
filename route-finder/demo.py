@@ -98,7 +98,7 @@ def get_tran(srt_routes, end_routes, bike_routes):
 def get_fare(srt_routes, end_routes, bike_routes):
     srt_fare = min([calc_faredelta(route['info']) for route in srt_routes])
     end_fare = min([calc_faredelta(route['info']) for route in end_routes])
-    bike_fare = 1000
+    bike_fare = int(min([1000*(calc_timedelta(route['time']).total_seconds()//3600+1) for route in end_routes]))
     total_fare = max(srt_fare, bike_fare, end_fare)
     return (total_fare, srt_fare, end_fare, bike_fare)
 
@@ -154,7 +154,7 @@ def read_routes(org, des):
                     f'<a href="{srt_link}">{org}</a>',
                     str(srt_time), srt_calo, srt_dist, srt_fare, srt_tran,
                     f'<a href="{bike_link}">{srt_name}</a>',
-                    str(bike_time), bike_calo, bike_dist,
+                    str(bike_time), bike_calo, bike_dist, bike_fare,
                     f'<a href="{end_link}">{end_name}</a>',
                     str(end_time), end_calo, end_dist, end_fare, end_tran,
                     f'<a href="{total_link}">{des}</a>',
@@ -165,7 +165,7 @@ def read_routes(org, des):
                 pass
 
     df = pd.DataFrame(
-        rows, columns="route_id org srt_time srt_calo srt_dist srt_fare srt_tran srt_name bike_time bike_calo bike_dist end_name end_time end_calo end_dist end_fare end_tran des total_time total_calo total_dist total_fare total_tran".split())
+        rows, columns="route_id org srt_time srt_calo srt_dist srt_fare srt_tran srt_name bike_time bike_calo bike_dist bike_fare end_name end_time end_calo end_dist end_fare end_tran des total_time total_calo total_dist total_fare total_tran".split())
     df.set_index("route_id", inplace=True)
     return df.sort_values(by="total_time")
 
